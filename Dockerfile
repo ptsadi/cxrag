@@ -15,10 +15,12 @@ COPY . .
 
 # Install dependencies
 RUN poetry config virtualenvs.create false \
-    && poetry install --no-interaction --no-ansi
+    && poetry install --no-interaction --no-ansi --no-root
 
 # Expose port
 EXPOSE 8501
 
+ENV PORT=8501
+
 # Run streamlit
-CMD ["poetry", "run", "streamlit", "run", "main.py"] 
+CMD poetry run streamlit run main.py --server.port 8501 --server.address 0.0.0.0
