@@ -20,7 +20,5 @@ RUN poetry config virtualenvs.create false \
 # Expose port
 EXPOSE 8501
 
-ENV PORT=8501
-
 # Run streamlit
-CMD poetry run streamlit run main.py --server.port 8501 --server.address 0.0.0.0
+CMD poetry run streamlit run main.py --server.address 0.0.0.0
