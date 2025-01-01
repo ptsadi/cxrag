@@ -8,12 +8,11 @@ readme = "README.md"
 [tool.poetry.dependencies]
 python = "^3.12"
 pinecone = "^5.4.2"
-datasets = "^3.2.0"
-tensorflow = "^2.18.0"
 tensorflow-text = "^2.18.1"
 streamlit = "^1.41.1"
 google-generativeai = "^0.8.3"
 pillow = "^11.0.0"
+tensorflow = "^2.18.0"
 
 [build-system]
 requires = ["poetry-core"]
