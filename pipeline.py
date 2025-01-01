@@ -121,15 +121,19 @@ class CXRImageRetrieval:
         vectors_to_upsert = []
         batch_size = 1
 
-        # Get existing vector IDs from Pinecone
+        # Get existing vector IDs from Pinecone in batches
         try:
             stats = self.index.describe_index_stats()
             existing_count = stats.total_vector_count
             if existing_count > 0:
                 print(f"Found {existing_count} existing vectors in the index")
-                # Fetch all existing IDs - adjust limit if needed
-                existing_vectors = self.index.fetch(ids=[str(i) for i in range(existing_count)])
-                existing_ids = set(existing_vectors['vectors'].keys())
+                # Fetch IDs in batches of 1000
+                existing_ids = set()
+                batch_size = 1000
+                for i in range(0, existing_count, batch_size):
+                    batch_ids = [str(j) for j in range(i, min(i + batch_size, existing_count))]
+                    batch_vectors = self.index.fetch(ids=batch_ids)
+                    existing_ids.update(batch_vectors['vectors'].keys())
             else:
                 existing_ids = set()
         except Exception as e:

@@ -1,5 +1,5 @@
 # Use Python 3.12 bullseye-slim image
-FROM python:3.12-slim-bullseye
+FROM python:3.11-slim-bullseye
 
 # Set working directory
 WORKDIR /app
@@ -21,4 +21,4 @@ RUN poetry config virtualenvs.create false \
 EXPOSE 8501
 
 # Run streamlit
-CMD poetry run streamlit run main.py --server.address 0.0.0.0
+CMD poetry run streamlit run main.py

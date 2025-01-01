@@ -1,7 +1,7 @@
 __pycache__
 *.pyc
-.env
 .git
 .gitignore
 .pytest_cache
-.coverage 
+.coverage
+model_files/
