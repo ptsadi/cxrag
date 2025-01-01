@@ -1,0 +1,6 @@
+model_files/
+.idea
+__pycache__
+.venv
+.env
+.streamlit/secrets.toml
