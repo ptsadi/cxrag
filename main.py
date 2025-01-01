@@ -166,13 +166,18 @@ class CXRImpressionApp:
         # Use stored results
         query_results = st.session_state.current_query_results
         
-        # Add logging for query results
+        # Add logging for query results with grey background
         if query_results['documents']:  # Only show if there are matches
-            st.write("Similar cases found:")
+            st.markdown("### Similar Cases Found")
             for i, (doc, score) in enumerate(zip(query_results['documents'], query_results['distances'])):
-                st.write(f"Match {i+1} (similarity: {score:.3f}):")
-                st.write(doc)
-                st.write("---")
+                st.markdown(f"""
+                <div style="background-color: #363636; padding: 15px; border-radius: 8px; margin-bottom: 10px;">
+                    <p style="color: #e0e0e0; margin: 0 0 8px 0;">Match {i+1} (similarity: {score:.3f}):</p>
+                    <p style="color: #e0e0e0; margin: 0;">{doc}</p>
+                </div>
+                """, unsafe_allow_html=True)
+            
+            st.markdown("</div>", unsafe_allow_html=True)
 
         # Only generate report if not already generated
         if 'current_report' not in st.session_state:
@@ -182,20 +187,28 @@ class CXRImpressionApp:
                 f.write(current_file.getvalue())
             st.session_state.current_report = self.report_generator.generate_report(query_results['documents'], path)
         
-        st.write(st.session_state.current_report)
-        
+        st.markdown("### Predicted Impression")
+        # Display the predicted impression with green background
+        st.markdown(f"""
+        <div style="background-color: #1a472a; padding: 15px; border-radius: 8px; margin: 10px 0;">
+            <div style="padding: 0 15px;">
+                <p style="color: #e0e0e0; margin: 0; white-space: pre-line;">{st.session_state.current_report}</p>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+
         # Only show buttons if not in editing mode
         if not st.session_state.editing_mode:
-            col1, col2 = st.columns(2)
+            col1, col2, col3 = st.columns([1, 1, 12])  # Adjusted column ratio to bring buttons closer
             with col1:
-                if st.button("👍 Correct", key=f"thumbs_up_{st.session_state.current_file_index}"):
+                if st.button("👍", key=f"thumbs_up_{st.session_state.current_file_index}"):
                     st.session_state.accuracy_stats['correct'] += 1
                     st.session_state.accuracy_stats['total'] += 1
                     self._clear_current_state()
                     self._next_image()
             
             with col2:
-                if st.button("👎 Incorrect", key=f"thumbs_down_{st.session_state.current_file_index}"):
+                if st.button("👎", key=f"thumbs_down_{st.session_state.current_file_index}"):
                     st.session_state.accuracy_stats['total'] += 1
                     st.session_state.editing_mode = True
                     st.rerun()
