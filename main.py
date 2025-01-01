@@ -146,6 +146,10 @@ class CXRImpressionApp:
                 self._process_current_image()
     
     def _process_current_image(self):
+        # Add state variable for editing mode
+        if 'editing_mode' not in st.session_state:
+            st.session_state.editing_mode = False
+        
         # Show progress
         st.write(f"Processing image {st.session_state.current_file_index + 1} of {len(st.session_state.uploaded_files)}")
         
@@ -153,8 +157,14 @@ class CXRImpressionApp:
         uploaded_img = Image.open(current_file)
         st.image(uploaded_img, width=500)
 
-        image_embedding = self.image_retrieval.generate_embedding(uploaded_img)
-        query_results = self.vector_db.retrieve_similar_images(image_embedding)
+        # Store results in session state to avoid recomputation
+        if 'current_embedding' not in st.session_state:
+            st.session_state.current_embedding = self.image_retrieval.generate_embedding(uploaded_img)
+        if 'current_query_results' not in st.session_state:
+            st.session_state.current_query_results = self.vector_db.retrieve_similar_images(st.session_state.current_embedding)
+        
+        # Use stored results
+        query_results = st.session_state.current_query_results
         
         # Add logging for query results
         if query_results['documents']:  # Only show if there are matches
@@ -164,32 +174,62 @@ class CXRImpressionApp:
                 st.write(doc)
                 st.write("---")
 
-        # Save the image to a temporary directory
-        temp_dir = tempfile.mkdtemp()
-        path = os.path.join(temp_dir, current_file.name)
-        with open(path, "wb") as f:
-            f.write(current_file.getvalue())
+        # Only generate report if not already generated
+        if 'current_report' not in st.session_state:
+            temp_dir = tempfile.mkdtemp()
+            path = os.path.join(temp_dir, current_file.name)
+            with open(path, "wb") as f:
+                f.write(current_file.getvalue())
+            st.session_state.current_report = self.report_generator.generate_report(query_results['documents'], path)
         
-        report = self.report_generator.generate_report(query_results['documents'], path)
-        st.write(report)
+        st.write(st.session_state.current_report)
         
-        # Add thumbs up/down buttons
-        col1, col2 = st.columns(2)
-        with col1:
-            if st.button("👍 Correct", key=f"thumbs_up_{st.session_state.current_file_index}"):
-                st.session_state.accuracy_stats['correct'] += 1
-                st.session_state.accuracy_stats['total'] += 1
-                self._next_image()
-        
-        with col2:
-            if st.button("👎 Incorrect", key=f"thumbs_down_{st.session_state.current_file_index}"):
-                st.session_state.accuracy_stats['total'] += 1
-                self._handle_manual_impression(report, image_embedding, query_results)
+        # Only show buttons if not in editing mode
+        if not st.session_state.editing_mode:
+            col1, col2 = st.columns(2)
+            with col1:
+                if st.button("👍 Correct", key=f"thumbs_up_{st.session_state.current_file_index}"):
+                    st.session_state.accuracy_stats['correct'] += 1
+                    st.session_state.accuracy_stats['total'] += 1
+                    self._clear_current_state()
+                    self._next_image()
+            
+            with col2:
+                if st.button("👎 Incorrect", key=f"thumbs_down_{st.session_state.current_file_index}"):
+                    st.session_state.accuracy_stats['total'] += 1
+                    st.session_state.editing_mode = True
+                    st.rerun()
+        else:
+            # Show editing interface
+            self._handle_manual_impression()
 
         # Show accuracy statistics
         if st.session_state.accuracy_stats['total'] > 0:
             accuracy = (st.session_state.accuracy_stats['correct'] / st.session_state.accuracy_stats['total']) * 100
             st.write(f"Current Accuracy: {accuracy:.2f}% ({st.session_state.accuracy_stats['correct']}/{st.session_state.accuracy_stats['total']})")
+
+    def _clear_current_state(self):
+        # Clear temporary state variables
+        if 'current_embedding' in st.session_state:
+            del st.session_state.current_embedding
+        if 'current_query_results' in st.session_state:
+            del st.session_state.current_query_results
+        if 'current_report' in st.session_state:
+            del st.session_state.current_report
+        if 'editing_mode' in st.session_state:
+            del st.session_state.editing_mode
+
+    def _handle_manual_impression(self):
+        edited_impression = st.text_area("Edit Impression:", value=st.session_state.current_report)
+        if st.button("Save Manual Impression"):
+            self.vector_db.store_manual_impression(
+                st.session_state.current_embedding,
+                edited_impression,
+                {'previous_impression': st.session_state.current_report}
+            )
+            st.success("Manual impression saved successfully!")
+            self._clear_current_state()
+            self._next_image()
 
     def _next_image(self):
         if st.session_state.current_file_index < len(st.session_state.uploaded_files) - 1:
@@ -198,17 +238,6 @@ class CXRImpressionApp:
         else:
             st.session_state.processing_started = False  # Reset processing state
             st.success("All images processed!")
-
-    def _handle_manual_impression(self, report: str, image_embedding: List[float], query_results: Dict):
-        edited_impression = st.text_area("Edit Impression:", value=report)
-        if st.button("Save Manual Impression"):
-            self.vector_db.store_manual_impression(
-                image_embedding,
-                edited_impression,
-                {'previous_impression': report}
-            )
-            st.success("Manual impression saved successfully!")
-            self._next_image()
 
 if __name__ == '__main__':
     app = CXRImpressionApp()
