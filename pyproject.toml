@@ -14,8 +14,6 @@ tensorflow = "^2.18.0"
 tensorflow-text = "^2.18.1"
 streamlit = "^1.41.1"
 google-generativeai = "^0.8.3"
-torch = { version = "^2.2.0+cpu" }
-torchvision = { version = "^0.17.0+cpu" }
 pillow = "^11.0.0"
 
 [build-system]
