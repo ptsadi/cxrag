@@ -11,7 +11,6 @@ from datasets import load_dataset
 from PIL import Image
 import tensorflow as tf
 import io
-import png
 import tensorflow_text
 from tqdm import tqdm
 import threading
@@ -213,27 +212,23 @@ class CXRImageRetrieval:
         if image_array.dtype == np.uint8:
             # For uint8 images, no rescaling is needed
             pixel_array = image.astype(np.uint8)
-            bitdepth = 8
+            mode = 'L'  # 8-bit pixels, grayscale
         else:
             # For other data types, scale image to use the full 16-bit range
             max_val = image.max()
             if max_val > 0:
                 image *= 65535 / max_val  # Scale to 16-bit range
             pixel_array = image.astype(np.uint16)
-            bitdepth = 16
+            mode = 'I;16'  # 16-bit unsigned integer pixels
 
         # Ensure the array is 2-D (grayscale image)
         if pixel_array.ndim != 2:
             raise ValueError(f'Array must be 2-D. Actual dimensions: {pixel_array.ndim}')
 
-        # Encode the array as a PNG image
+        # Convert numpy array to PIL Image and encode as PNG
+        pil_image = Image.fromarray(pixel_array, mode=mode)
         output = io.BytesIO()
-        png.Writer(
-            width=pixel_array.shape[1],
-            height=pixel_array.shape[0],
-            greyscale=True,
-            bitdepth=bitdepth
-        ).write(output, pixel_array.tolist())
+        pil_image.save(output, format='PNG')
         png_bytes = output.getvalue()
 
         # Create a tf.train.Example and assign the features
